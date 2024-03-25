@@ -5,6 +5,7 @@
 #include <iostream>
 #include "def.h"
 
+#if BY_SHADER
 // 在初始化时创建矩形的顶点数据
 float screenVertices[] = {
     // 位置           // 纹理坐标
@@ -19,9 +20,9 @@ unsigned int indices[] = {
     2, 3, 0
 };
 
-CTexture::CTexture(const char *vertexPath, const char *fragmentPath)
+CTexture::CTexture()
 {
-    mShader = new Shader(vertexPath, fragmentPath);
+    mShader = new Shader("/res/shaders/texture_vertex.glsl","/res/shaders/texture_fragment.glsl");
 
     glGenTextures(1, &mTexture);
     glActiveTexture(GL_TEXTURE0);
@@ -71,9 +72,7 @@ void CTexture::Rendering()
 
     mShader->begin();
     {
-        // 绑定纹理
-        //glBindTexture(GL_TEXTURE_2D, mTexture);
-
+        // method -1
         mShader->setMatrix("texture1",0);
         // 设置纹理单元
         // 渲染矩形
@@ -81,4 +80,37 @@ void CTexture::Rendering()
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
     mShader->end();
+
 }
+#else   // by framebuffer
+CTexture::CTexture()
+{
+    glGenTextures(1, &mTexture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mTexture, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        std::cout << "Error: Framebuffer is not complete!" << std::endl;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+CTexture::~CTexture()
+{
+    glDeleteTextures(1, &mTexture);
+}
+
+void CTexture::Rendering(GLuint fbo)
+{
+    // framebuffer是您的帧缓冲对象的id
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    // 绑定默认帧缓冲，即屏幕
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    // glBlitFramebuffer函数用于将一个帧缓冲的内容复制到另一个帧缓冲（这里是默认帧缓冲，即屏幕）。
+    // GL_NEAREST表示使用最近邻插值方法进行复制，可以根据需要选择其他插值方法。
+    glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+}
+#endif

@@ -1,23 +1,23 @@
 #pragma once
 #include <GL/glew.h>
-
 #include "shader.h"
 #include "render.h"
 
-class CTexture : public CRender{
+class CRanderBuffer : public CRender{
 public:
-	CTexture();
-	~CTexture();
+	CRanderBuffer();
+	~CRanderBuffer();
 #if BY_SHADER
     void Rendering();
 #else
     void Rendering(GLuint fbo);
 #endif
+    
 
 private:
 	GLuint mVAO;
     GLuint mVBO;
     GLuint mEBO;
-    GLuint mTexture;
+    GLuint mRBO;
     Shader *mShader;
 };

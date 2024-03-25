@@ -1,7 +1,5 @@
 #include <iostream>
 #include <thread>
-// #include <GL/glew.h>
-// #include <GLFW/glfw3.h>
 #include "def.h"
 #include <chrono>
 #include <vector>
@@ -10,12 +8,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-// #include "shader.h"
 #include "axis.h"
 #include "point_cloud.h"
 #include "texture.h"
-#include "render_buffer.h"
-#include "render.h"
+
 // ======================================================================
 // 生成3D点云数据
 void saveRenderbufferToPNG(const std::string& filename, int width, int height) {
@@ -128,13 +124,12 @@ int main()
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     // 创建和编译坐标轴着色器
-    //CRender *render = new CTexture();
-    CRender *render = new CRanderBuffer();
+    CTexture texture("/res/shaders/texture_vertex.glsl","/res/shaders/texture_fragment.glsl");
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-// =================================================================================
+// #########################################################################
     const bool _draw_screen = true;
     {
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer); // 绑定FBO，之后就能渲染到Texture中了（因为前面已经将Texture和绑定进行了绑定）
@@ -148,17 +143,13 @@ int main()
         std::vector<float> sphereVertices = getBallData(sectorCount,stackCount);  // Create sphere vertices
         pointCloud.Rendering(sphereVertices);
 
-        saveRenderbufferToPNG("texture_render_to_texture.png", WIDTH, HEIGHT);
+        saveRenderbufferToPNG("texture_render_to_texture.png", 800, 600);
     }
-// ================================================================================= 
+    
     // 使用纹理渲染到屏幕上
     if(_draw_screen){
-#if BY_SHADER
-        render->Rendering();
-#else
-        render->Rendering(framebuffer);
-#endif
-        saveRenderbufferToPNG("texture_render_to_screen.png", WIDTH, HEIGHT);
+        texture.Rendering();
+        saveRenderbufferToPNG("texture_render_to_screen.png", 800, 600);
     }
 
     glfwSwapBuffers(window);
