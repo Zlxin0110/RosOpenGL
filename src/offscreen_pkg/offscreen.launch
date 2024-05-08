@@ -1,0 +1,7 @@
+<launch>
+    <!-- 加载配置文件到参数服务器 -->
+    <rosparam file="$(find offscreen_pkg)/config.yaml" command="load"/>
+
+    <!-- 启动节点 -->
+    <node name="offscreen_node" pkg="offscreen_pkg" type="offscreen_node" output="screen"/>
+</launch>

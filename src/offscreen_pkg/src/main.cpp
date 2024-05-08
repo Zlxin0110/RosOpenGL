@@ -1,7 +1,5 @@
-#include <iostream>
+#include "ros/ros.h"
 #include <thread>
-// #include <GL/glew.h>
-// #include <GLFW/glfw3.h>
 #include "def.h"
 #include <chrono>
 #include <vector>
@@ -10,12 +8,25 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-// #include "shader.h"
 #include "axis.h"
 #include "point_cloud.h"
 #include "texture.h"
 #include "render_buffer.h"
 #include "render.h"
+#include "camera.h"
+
+//相机
+Camera* camera = nullptr;
+OrthographicCamera* orthographicCamera = nullptr;
+PerspectiveCamera* perspectiveCamera = nullptr;
+//相机控制
+CameraControl* cameraControl = nullptr;
+GameCameraControl* gameCameraControl = nullptr;
+TrackBallCameraControl* trackBallCameraControl = nullptr;
+
+// ======================================================================
+float mFar = PROJECTION_ZFAR;
+float mFovy = PROJECTION_FOVY;
 // ======================================================================
 // 生成3D点云数据
 void saveRenderbufferToPNG(const std::string& filename, int width, int height) {
@@ -36,9 +47,22 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    cameraControl->onCursor(xpos, ypos);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    double start_x = 0.0f;
+    double start_y = 0.0f;
+    glfwGetCursorPos(window, &start_x, &start_y);
+    cameraControl->onMouse(button, action, start_x, start_y);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    cameraControl->onScroll(yoffset);
 }
 
 GLFWwindow* createWindow()
@@ -54,6 +78,13 @@ GLFWwindow* createWindow()
         glfwTerminate();
         return nullptr;
     }
+
+    // 注册鼠标滚轮事件回调函数
+    glfwSetScrollCallback(window, scroll_callback);
+    // 注册鼠标移动事件回调函数
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    // 注册鼠标按键事件回调函数
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -108,8 +139,38 @@ std::vector<float> getBallData(const int sectorCount, const int stackCount)
     return vertices;
 }
 
-int main()
+void prepareCamera() {
+    //相机公用数据
+    glm::vec3 CPosition = VIEW_EYE_POSITION;
+    glm::vec3 CUp = VIEW_CAMERA_UP_POSITION;
+    glm::vec3 CRight = glm::vec3(1.0f, 0.0f, 0.0f);
+    float size = 10.0f;
+
+    std::string paraValue;
+    //创建两个相机    
+    if (ros::param::get("camera_type", paraValue) && paraValue == "perspective" ) {
+        camera= new PerspectiveCamera(60.0f,PROJECTION_ASPEC,0.1f,1000.0f,glm::vec3(0.0f, 0.0f, 5.0f),glm::vec3(0.0f, 1.0f, 0.0f),glm::vec3(1.0f, 0.0f, 0.0f));
+    }else{
+        camera = new OrthographicCamera(-size, size, size, -size, size, -size, CPosition, CUp, CRight);
+    }
+    
+    //创建两个相机控制
+    if (ros::param::get("camera_control", paraValue) && paraValue == "track_ball" ) {
+        cameraControl = new TrackBallCameraControl;
+    }else{
+        cameraControl = new GameCameraControl;
+    }
+    
+    //切换相机
+    cameraControl->setCamera(camera);
+    cameraControl->setSensitivity(0.05f);
+}
+
+int main(int argc, char **argv)
 {
+    // 初始化ROS节点
+    ros::init(argc, argv, "offscreen_node");
+
     GLFWwindow* window = createWindow();
     if (window == NULL) {
         return -1;
@@ -127,44 +188,47 @@ int main()
     GLuint framebuffer;
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    
     // 创建和编译坐标轴着色器
-    //CRender *render = new CTexture();
-    CRender *render = new CRanderBuffer();
-
+    CRender *render = nullptr;
+    std::string paraValue;
+    if (ros::param::get("render_type", paraValue) && paraValue == "render_buffer" ) {
+        std::cout << "CRanderBuffer()" << std::endl;
+        render = new CRanderBuffer();
+    }else{
+        render = new CTexture();
+    }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-// =================================================================================
-    const bool _draw_screen = true;
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer); // 绑定FBO，之后就能渲染到Texture中了（因为前面已经将Texture和绑定进行了绑定）
-        
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+    prepareCamera();
 
-        // 绘制坐标轴
-        axis.Rendering();
-        // 绘制ball
-        std::vector<float> sphereVertices = getBallData(sectorCount,stackCount);  // Create sphere vertices
-        pointCloud.Rendering(sphereVertices);
+    std::vector<float> sphereVertices = getBallData(sectorCount,stackCount);  // Create sphere vertices
+    while (!glfwWindowShouldClose(window)) {
+        // =================================================================================
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer); // 绑定FBO，之后就能渲染到Texture中了（因为前面已经将Texture和绑定进行了绑定）
+            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-        saveRenderbufferToPNG("texture_render_to_texture.png", WIDTH, HEIGHT);
-    }
-// ================================================================================= 
-    // 使用纹理渲染到屏幕上
-    if(_draw_screen){
+            glm::mat4 model = glm::mat4(1.0f);
+            glm::mat4 view = camera->getViewMatrix();
+            glm::mat4 projection = camera->getProjectionMatrix();
+
+            // 绘制坐标轴
+            axis.Rendering(model, view, projection);
+            // 绘制ball
+            pointCloud.Rendering(model, view, projection, sphereVertices);
+        }
+        // ================================================================================= 
+// 使用纹理渲染到屏幕上
 #if BY_SHADER
         render->Rendering();
 #else
         render->Rendering(framebuffer);
 #endif
-        saveRenderbufferToPNG("texture_render_to_screen.png", WIDTH, HEIGHT);
-    }
 
-    glfwSwapBuffers(window);
-
-    while (!glfwWindowShouldClose(window)) {
-        processInput(window);
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
     glDeleteFramebuffers(1, &framebuffer);

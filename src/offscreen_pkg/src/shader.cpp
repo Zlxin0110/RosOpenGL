@@ -1,7 +1,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
-#include <iostream>
+
 #include <boost/filesystem.hpp>
 #include "shader.h"
 #include <ros/ros.h>

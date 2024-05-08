@@ -7,8 +7,8 @@ public:
 	CAxis(const char* vertexPath, const char* fragmentPath);
 	~CAxis();
 
-    void Rendering();
-
+    void Rendering(glm::mat4 model, glm::mat4 view, glm::mat4 projection);
+ 
 
 private:
 	GLuint mVAO;

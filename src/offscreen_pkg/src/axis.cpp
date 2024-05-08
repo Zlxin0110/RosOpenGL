@@ -1,7 +1,4 @@
 #include "axis.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include "def.h"
 
 const float axisVertices[] = {
@@ -44,16 +41,16 @@ CAxis::~CAxis()
     }
 }
 
-void CAxis::Rendering()
+void CAxis::Rendering(glm::mat4 model, glm::mat4 view, glm::mat4 projection)
 {
     mShader->begin();
     {
-        glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = glm::lookAt(glm::vec3(5.0f, 5.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 axisProjection = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        // glm::mat4 model = glm::mat4(1.0f);
+        // glm::mat4 view = glm::lookAt(VIEW_EYE_POSITION, VIEW_LOOK_AT_POSITION, VIEW_CAMERA_UP_POSITION);
+        // glm::mat4 projection = glm::perspective(glm::radians(PROJECTION_FOVY), PROJECTION_ASPEC, PROJECTION_ZNEAR, PROJECTION_ZFAR);
         glUniformMatrix4fv(glGetUniformLocation(mShader->Handle(), "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(mShader->Handle(), "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(mShader->Handle(), "projection"), 1, GL_FALSE, glm::value_ptr(axisProjection));
+        glUniformMatrix4fv(glGetUniformLocation(mShader->Handle(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
         glBindVertexArray(mVAO);
         glDrawArrays(GL_LINES, 0, 6);

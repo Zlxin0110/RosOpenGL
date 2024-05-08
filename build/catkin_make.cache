@@ -1,0 +1,2 @@
+cv_test_pkg:draw_vba_pkg:my_package:offscreen_pkg
+-DCATKIN_DEVEL_PREFIX=/home/zlx/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/zlx/catkin_ws/install -G Unix Makefiles

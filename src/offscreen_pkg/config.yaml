@@ -1,0 +1,11 @@
+# texture / render_buffer
+render_type: render_buffer
+
+# perspective / orthographic
+camera_type : perspective
+
+# track_ball / game
+camera_control : track_ball
+
+key2:
+  subkey1: subvalue1

@@ -148,7 +148,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(offscreen_node src/main.cpp src/shader.cpp src/axis.cpp src/point_cloud.cpp src/texture.cpp src/render_buffer.cpp include/render.h)
+add_executable(offscreen_node src/main.cpp src/shader.cpp src/axis.cpp src/point_cloud.cpp src/texture.cpp src/render_buffer.cpp src/camera.cpp include/render.h)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

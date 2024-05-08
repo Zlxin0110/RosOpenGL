@@ -1,4 +1,3 @@
-#include <iostream>
 #include <thread>
 #include "def.h"
 #include <chrono>
